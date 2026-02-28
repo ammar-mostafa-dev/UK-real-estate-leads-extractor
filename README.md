@@ -20,7 +20,7 @@ This specialized tool automates the extraction of **Real Estate Agent Leads** ac
 * **Pandas** (Data organization & CSV export)
 
 ### 🚀 Quick Start:
-1. **Clone it:** `git clone https://github.com/aMoro21/UK-real-estate-leads-extractor.git`
+1. **Clone it:** `git clone https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor.git`
 2. **Install:** `pip install requests beautifulsoup4 pandas`
 3. **Run:** `python main.py`
 
