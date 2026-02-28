@@ -34,9 +34,9 @@ class AgencyLinksExtractor:
         return None
     @staticmethod
     def build_next_page_url(main_url,page_num) : 
-        '''This function builds a url manually using a pattern (the pattern which the website uses in the current date (1/31/2026))'''
+        '''This function builds a url manually using a pattern (the pattern which the website uses in the current date (2/22/2026))'''
         pattern = 'category/estate-agents/{page_number}'
-        return urljoin(main_url,pattern.format(page_number=page_num+1))
+        return urljoin(main_url,pattern.format(page_number=page_num))
 def main(): 
     page = 'https://www.yelu.uk/category/estate-agents/1'
 
