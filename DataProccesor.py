@@ -76,8 +76,8 @@ class DataProcessor:
         ]
         # Gold Data Filter 
         self.gold_df = df.dropna(subset=gold_fields)
-        # Export Gold Data Filter 
-        self.gold_df.to_csv(f"Uk_RealEstate_gold_leads.csv", index=False)
+        # Export Gold Data 
+        self.gold_df.to_csv(f"Uk_RealEstate_Gold_Leads.csv", index=False)
     def filter_platinum_data(self): 
         # Load Data Frame
         df = self.df 
@@ -93,3 +93,5 @@ class DataProcessor:
 
         # Remove Repeated Gold rows from Platinum to avoid duplication
         self.platinum_df = self.platinum_df[~self.platinum_df.index.isin(self.gold_df.index)]
+        # Export Platinum data 
+        self.platinum_df.to_csv(f'Uk_RealEstate_Platinum_Leads')
