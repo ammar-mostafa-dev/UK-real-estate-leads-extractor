@@ -1,29 +1,64 @@
 import csv
 import time
-import requests
-from helper_functions import get_soup
 from AgencyStructure import Agency
 from AgenciesDatasExtractor import AgencyDataExtractor 
 from AgenciesLinksExtractor import AgencyLinksExtractor 
-from helper_functions import setup_logger
+from helper_functions import setup_logger,get_soup
 from os.path import exists
 from DataProccesor import DataProcessor
+import asyncio 
+import aiohttp
+from bs4 import BeautifulSoup
 # setup logger 
 logger = setup_logger(__name__)
 class MainScraper: 
     def __init__(self):
         # the main data columns 
         self.file_headers = Agency.get_headers()
+
         self.main_url = 'https://www.yelu.uk/'
         self.current_url = ''
         self.csv_file = 'agencies_csv.csv'
         self.excel_file = 'UK_RealEstate_leads_data_sample.xlsx'
         self.log_file = 'scraper.log'
         # attributes for tracking
-        self.page_limit = 10 # this attribute is responsible for detecting page number we stop the scraper at 
+        self.page_limit = 484 # this attribute is responsible for detecting page number we stop the scraper at 
         self.failed_page_links = 0 # to track number of pages failed pages failed
         self.current_page_num = 1
-        self.failure_limit = 10 # this attribute is responsible for the number of failed attempts you allow the scraper to continue until it reaches it 
+        self.failure_limit = 7 # this attribute is responsible for the number of failed attempts you allow the scraper to continue until it reaches it 
+    async def get_soup_async(self,session,url): 
+        try:
+            # Non-blocking request to get the HTML
+            async with session.get(url) as response:
+                if response.status == 200:
+                    html = await response.text() # Pauses here until HTML is received
+                    # Parse the HTML synchronously (it's fast)
+                    soup = BeautifulSoup(html, 'lxml')
+                    return soup
+                else:
+                    print(f"Failed to fetch {url}, Status: {response.status}")
+                    return None
+        except Exception as e:
+            print(f"Error fetching {url}: {e}")
+            return None
+    async def scrape_agency_async(self,session,url) : 
+        """"Scrape A single agency url asynchronously"""
+        # Get the soup using our async method
+        soup = await self.get_soup_async(session, url)
+        
+        if not soup:
+            return None
+        # Extract Agency Data
+        try:
+            agency_data_extractor = AgencyDataExtractor(soup)
+            agency_data = agency_data_extractor.agency_data_extractor(url)
+            if agency_data : 
+                return agency_data
+            logger.warning(f"Couldn't Scrape Agency {url} Data")
+        except Exception as e:
+            print(f"Error parsing data for {url}: {e}")
+            return None
+
     def scraper_status_checker(self): 
         '''This function checks if the scraper has just started or if it\'s been resumed'''
         leads_urls = self.get_scraped_leads_urls()
@@ -40,67 +75,8 @@ class MainScraper:
             # force clear the log file 
             open('scraper.log','w').close()
         return {'FileOpeningMode':file_opening_mode,'PagesScraped':pages_scraped,"LeadsUrls":leads_urls}
-    def handle_soup_validation(self):
-        '''This function handles soup validation process '''
-        # get soup 
-        soup = self.handle_getting_soup()
-        # validate soup 
-        if not soup :  
-            logger.error(f'Couldn\'t Get Soup For Page {self.current_page_num} After 3 Attempts')
-            
-            if self.failed_page_links >= self.failure_limit :
-                logger.error(f'{self.failure_limit} Continued Pages Soup Failures , Stopping the scraper to protect IP')
-                raise Exception
-            self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url,self.current_page_num)     
-            self.current_page_num += 1 
-        else : 
-            return soup 
-         
-    def scrape_page_agencies(self,to_scrape_urls): 
-        expected_urls = len(to_scrape_urls)
-        scraped_agencies = 0 # to track agencies scraped
-        '''This function gets the agencies urls and scrapes them , uses yield for effeciency'''
-        # go through each agency url 
-        for url in to_scrape_urls: 
-            # get the soup for the url for this agency 
-            agency_soup = get_soup(url)
-            if not(agency_soup): 
-                logger.warning(f"Couldn't Find Agency {url} soup")
-                # continue to the next agency, Add a polite delay
-                time.sleep(0.5)
-                continue
-            # extract its data
-            data_extractor = AgencyDataExtractor(agency_soup)
-            agency_data_dict = data_extractor.all_data_extractor(url)
-            if not(agency_data_dict) : 
-                logger.warning(f"Couldn't Find Any Data to agency {url}")
-                time.sleep(0.5)
-                continue 
-            yield agency_data_dict 
-            scraped_agencies += 1
-        # log the Number Of leads Extracted after each scraped page
-        logger.info(f'+ {scraped_agencies} Scraped , Missing {expected_urls - scraped_agencies} agencies')
 
 
-    def get_page_agencies(self) :
-        '''This function extracts the agencies with their data in a single'''
-        # handle soup failure if not found 
-        try : 
-            soup = self.handle_soup_validation()
-        except Exception : 
-            return {}
-        
-        self.failed_page_links = 0 # Reset failures because we captured a valid page        
-        # get the agencies links from the page 
-        links_extractor = AgencyLinksExtractor(soup,self.main_url)
-        agencies_urls = links_extractor.get_all_urls()
-        if not(agencies_urls): 
-            logger.error(f"Couldn't Find Page {self.current_page_num} Agencies Links, Continuing to the next page")
-            self.failed_page_links +=1 
-
-        logger.info(f'Page {self.current_page_num} agencies links has been captured, Scraping Them Now')
-        
-        return agencies_urls
     def get_scraped_leads_urls(self) : 
         """Returns the number of already scraped leads if file exists, Else None ,Highly efficient line counting for large datasets."""
         existing_urls = set()
@@ -122,8 +98,8 @@ class MainScraper:
             logger.error(f"Error reading existing CSV: {e}")
             # an empty set 
             return existing_urls 
-    def run(self): 
-        # check if the scraper has just started or it's been resumed 
+    async def run(self): 
+        """Main Loop To manage the concurrent scraping """
         scraper_status  = self.scraper_status_checker()
 
         file_opening_mode = scraper_status['FileOpeningMode'] 
@@ -132,33 +108,64 @@ class MainScraper:
 
         self.current_page_num = pages_scraped + 1 
         self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url,self.current_page_num)
-       
-
+        # to manage speed of concurrent tasks
+        semaphore = asyncio.Semaphore(3)
         # if the scraper has just started we'll open the file in w mode (to add headers and also force clear the file),otherwise we'll open it at a mode (to append new values without having to write headers again)
         with open(self.csv_file,file_opening_mode, newline='', encoding='utf-8') as f: 
             writer = csv.DictWriter(f, fieldnames=self.file_headers)
-            if file_opening_mode == 'w' : writer.writeheader() # if that's the first time the file has been opened (The Scraper Has just Started)
-            # to track pages that we failed getting their agencies links (entirely)
+            if file_opening_mode == 'w' : writer.writeheader() # if that's the first time the file opened (the scraper has just started)
+            # to track failures that occured 
             self.failed_page_links = 0 
-            # the main loop 
-            while self.current_page_num <= self.page_limit : 
-                # get the current page agencies links 
-                agencies_urls = self.get_page_agencies()
-                
-                if agencies_urls :
+            # Define a single session to reuse connections 
+            async with aiohttp.ClientSession() as session : 
+                while self.current_page_num <= self.page_limit : 
+                    #Get Page Soup (Using Async)
+                    self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url, self.current_page_num)
+                    soup = await self.get_soup_async(session, self.current_url)
+                    
+                    if not soup:
+                        logger.error(f"Couldn't Get Soup For Page {self.current_page_num}")
+                        self.failed_page_links += 1
+                        if self.failed_page_links >= self.failure_limit: break
+                        self.current_page_num += 1
+                        continue
+
+                    # Get Links from Soup
+                    links_extractor = AgencyLinksExtractor(soup, self.main_url)
+                    agencies_urls = links_extractor.get_all_urls()
+                    
+                    if not agencies_urls:
+                        logger.warning(f"No agencies found on page {self.current_page_num}")
+                        self.current_page_num += 1
+                        continue
                     toscrape_urls = {url for url in agencies_urls if url not in leads_scraped_urls}
-                    # we used yield generator to enhance program effeciency 
-                    for agency_data in self.scrape_page_agencies(toscrape_urls):  
-                        writer.writerow(agency_data)
-                        leads_scraped_urls.add(agency_data['source_url'])
-                        # to view data instantly
-                        f.flush()
-                else : 
-                    logger.error(f"Couldn't Find Agencies Links For Page {self.current_page_num}")
-                    continue
-                self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url,self.current_page_num)
-                self.current_page_num +=1 
-                        
+                    # create the tasks 
+                    tasks = []
+                    for url in toscrape_urls :
+                        tasks.append(self.sem_task(semaphore,session,url))
+                    
+                    # Run tasks concurrently and get the results (agencies datas)
+                    agencies_datas = await asyncio.gather(*tasks)
+                    # to track agencies scraped 
+                    scraped_agencies = 0 
+                    for agency_data in agencies_datas : 
+                        if agency_data : 
+                            writer.writerow(agency_data)
+                            scraped_agencies +=1 
+                        else : 
+                          logger.warning(f"Couldn't Extract Agency : {url} data ")
+                    if scraped_agencies != 0 : 
+                        logger.info(f"Page {self.current_page_num} Agencies Have Been Scraped,+{scraped_agencies},missing {len(toscrape_urls)-scraped_agencies}")
+                    else : 
+                        logger.warning(f"Couldn't Scrape Page {self.current_page_num}")
+                        self.failed_page_links += 1 
+                        if self.failed_page_links == self.failure_limit : 
+                            logger.info(f'{self.failure_limit} consequitive failures , stopping to protect IP')
+                            break
+                    self.current_page_num += 1
+
+                    # the url for the page we're on  
+                    self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url,self.current_page_num)
     def handle_getting_soup(self) : 
         '''This function trys to get the page soup for three times , returns soup or None'''
         for i in range(1,4):
@@ -170,15 +177,16 @@ class MainScraper:
             time.sleep(3)
         
         return None  # All attempts failed
-
+    async def sem_task(self, semaphore, session, url):
+        async with semaphore:
+            return await self.scrape_agency_async(session, url)
 
 def main() : 
     scraper = MainScraper()
-    scraper.run()
+    asyncio.run(scraper.run())
+
     scraper_reporter = DataProcessor('agencies_csv.csv')
     scraper_reporter.finalize_scraper()
-    scraper_reporter.convert_to_excel()
 if __name__ == '__main__' : 
     main()
-
 

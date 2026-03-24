@@ -12,10 +12,10 @@ class AgencyDataExtractor:
             'phone': '.text.phone a',
             'extra_info' : '.extra_info .info .label' , # this selector gets three labels (employees range, establishment date,company manager )
         }
-    def all_data_extractor(self,url) : 
+    def agency_data_extractor(self,src_url) : 
         '''This function extracts all data using selectors we defined , returns a dictionary full of values and whenever an value aint found it puts N/A as its value '''
         # a dict to store the data we extracted so we can pass it to the agency class and assign it with default values 
-        dict_data = {'source_url':url,'employees_range':'N/A','establish_date':'N/A'}
+        dict_data = {'source_url':src_url,'employees_range':'N/A','establish_date':'N/A'}
         for property,selector in self.selectors.items() : 
             if property != 'extra_info': 
                 value = self.soup.select_one(selector)
