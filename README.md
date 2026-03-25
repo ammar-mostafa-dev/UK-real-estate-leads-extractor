@@ -46,6 +46,7 @@ Follow these steps to set up the project locally
 ### 1. Clone The Repository 
 ```
 git clone https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor
+cd UK-real-estate-leads-extractor
 ```
 
 ### 2. Set Up Virtual Environment
