@@ -44,10 +44,8 @@ The pipeline is designed to extract 100% of publicly listed metadata from the so
 Follow these steps to set up the project locally 
 
 ### 1. Clone The Repository 
-
 ```
-git clone [https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor](https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor)
-cd UK-real-estate-leads-extractor
+git clone https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor
 ```
 
 ### 2. Set Up Virtual Environment
