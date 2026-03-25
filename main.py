@@ -9,6 +9,8 @@ from DataProccesor import DataProcessor
 import asyncio 
 import aiohttp
 from bs4 import BeautifulSoup
+import pandas as pd
+import random 
 # setup logger 
 logger = setup_logger(__name__)
 class MainScraper: 
@@ -16,24 +18,29 @@ class MainScraper:
         # the main data columns 
         self.file_headers = Agency.get_headers()
 
-        self.main_url = 'https://www.yelu.uk/'
-        self.current_url = ''
-        self.csv_file = 'agencies_csv.csv'
-        self.excel_file = 'UK_RealEstate_leads_data_sample.xlsx'
-        self.log_file = 'scraper.log'
+        self.main_url = "https://www.yelu.uk/"
+        self.current_url = ""
+        self.csv_file = "agencies_csv.csv"
+        self.excel_file = "UK_RealEstate_leads_data_sample.xlsx"
+        self.log_file = "scraper.log"
         # attributes for tracking
-        self.page_limit = 484 # this attribute is responsible for detecting page number we stop the scraper at 
+        self.page_limit = 500 # this attribute is responsible for detecting page number we stop the scraper at 
         self.failed_page_links = 0 # to track number of pages failed pages failed
         self.current_page_num = 1
         self.failure_limit = 7 # this attribute is responsible for the number of failed attempts you allow the scraper to continue until it reaches it 
-    async def get_soup_async(self,session,url): 
+    async def get_soup_async(self, session, url): 
+       # Define Headers
+        headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Connection": "keep-alive", 
+}
         try:
-            # Non-blocking request to get the HTML
-            async with session.get(url) as response:
+            async with session.get(url, headers=headers, timeout=10) as response:
                 if response.status == 200:
-                    html = await response.text() # Pauses here until HTML is received
-                    # Parse the HTML synchronously (it's fast)
-                    soup = BeautifulSoup(html, 'lxml')
+                    html = await response.text()
+                    soup = BeautifulSoup(html, "lxml")
                     return soup
                 else:
                     print(f"Failed to fetch {url}, Status: {response.status}")
@@ -44,6 +51,7 @@ class MainScraper:
     async def scrape_agency_async(self,session,url) : 
         """"Scrape A single agency url asynchronously"""
         # Get the soup using our async method
+        await asyncio.sleep(random.uniform(0.5,1.5))
         soup = await self.get_soup_async(session, url)
         
         if not soup:
@@ -60,21 +68,21 @@ class MainScraper:
             return None
 
     def scraper_status_checker(self): 
-        '''This function checks if the scraper has just started or if it\'s been resumed'''
+        """This function checks if the scraper has just started or if it\"s been resumed"""
         leads_urls = self.get_scraped_leads_urls()
         leads_count = len(leads_urls)
         if leads_count: 
-            file_opening_mode = 'a'
+            file_opening_mode = "a"
             pages_scraped = leads_count // 20 
-            logger.info(f'Scraper Resumed At Page {pages_scraped+1}')
+            logger.info(f"Scraper Resumed At Page {pages_scraped+1}")
         
         else:
-            file_opening_mode = 'w'
+            file_opening_mode = "w"
             pages_scraped = 0 
-            logger.info('Scraper Started') 
+            logger.info("Scraper Started") 
             # force clear the log file 
-            open('scraper.log','w').close()
-        return {'FileOpeningMode':file_opening_mode,'PagesScraped':pages_scraped,"LeadsUrls":leads_urls}
+            open("scraper.log","w").close()
+        return {"FileOpeningMode":file_opening_mode,"PagesScraped":pages_scraped,"LeadsUrls":leads_urls}
 
 
     def get_scraped_leads_urls(self) : 
@@ -85,10 +93,10 @@ class MainScraper:
             return existing_urls
    
         try:
-            with open(self.csv_file, 'r', encoding='utf-8') as f:
+            with open(self.csv_file, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    url = row.get('source_url') # get the source url from each row 
+                    url = row.get("source_url") # get the source url from each row 
                     if url:
                         existing_urls.add(url)
             
@@ -102,18 +110,18 @@ class MainScraper:
         """Main Loop To manage the concurrent scraping """
         scraper_status  = self.scraper_status_checker()
 
-        file_opening_mode = scraper_status['FileOpeningMode'] 
-        pages_scraped = scraper_status['PagesScraped']
-        leads_scraped_urls = scraper_status['LeadsUrls']
+        file_opening_mode = scraper_status["FileOpeningMode"] 
+        pages_scraped = scraper_status["PagesScraped"]
+        leads_scraped_urls = scraper_status["LeadsUrls"]
 
         self.current_page_num = pages_scraped + 1 
         self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url,self.current_page_num)
         # to manage speed of concurrent tasks
-        semaphore = asyncio.Semaphore(3)
-        # if the scraper has just started we'll open the file in w mode (to add headers and also force clear the file),otherwise we'll open it at a mode (to append new values without having to write headers again)
-        with open(self.csv_file,file_opening_mode, newline='', encoding='utf-8') as f: 
+        semaphore = asyncio.Semaphore(2)
+        # if the scraper has just started we"ll open the file in w mode (to add headers and also force clear the file),otherwise we"ll open it at a mode (to append new values without having to write headers again)
+        with open(self.csv_file,file_opening_mode, newline="", encoding="utf-8") as f: 
             writer = csv.DictWriter(f, fieldnames=self.file_headers)
-            if file_opening_mode == 'w' : writer.writeheader() # if that's the first time the file opened (the scraper has just started)
+            if file_opening_mode == "w" : writer.writeheader() # if that"s the first time the file opened (the scraper has just started)
             # to track failures that occured 
             self.failed_page_links = 0 
             # Define a single session to reuse connections 
@@ -121,8 +129,10 @@ class MainScraper:
                 while self.current_page_num <= self.page_limit : 
                     #Get Page Soup (Using Async)
                     self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url, self.current_page_num)
-                    soup = await self.get_soup_async(session, self.current_url)
-                    
+                    for i in range (0,3): 
+                        soup = await self.get_soup_async(session, self.current_url)
+                        if soup : break 
+                        logger.warning(f"Couldn't Get page {self.current_page_num} Soup , Trying {3-i} More Times")
                     if not soup:
                         logger.error(f"Couldn't Get Soup For Page {self.current_page_num}")
                         self.failed_page_links += 1
@@ -154,20 +164,34 @@ class MainScraper:
                             scraped_agencies +=1 
                         else : 
                           logger.warning(f"Couldn't Extract Agency : {url} data ")
+                    # a retry logic for all failed agencies in the page
+                    failed_on_this_page = [url for i, url in enumerate(toscrape_urls) if agencies_datas[i] is None]
+
+                    if failed_on_this_page:
+                        logger.info(f"Retrying {len(failed_on_this_page)} failed agencies for page {self.current_page_num}...")
+                        await asyncio.sleep(4) # delay
+                        retry_tasks = [self.sem_task(semaphore, session, url) for url in failed_on_this_page]
+                        retry_results = await asyncio.gather(*retry_tasks)
+                        
+                        for data in retry_results:
+                            if data:
+                                writer.writerow(data)
+                                scraped_agencies += 1
                     if scraped_agencies != 0 : 
                         logger.info(f"Page {self.current_page_num} Agencies Have Been Scraped,+{scraped_agencies},missing {len(toscrape_urls)-scraped_agencies}")
+                        self.failed_page_links = 0 
                     else : 
                         logger.warning(f"Couldn't Scrape Page {self.current_page_num}")
                         self.failed_page_links += 1 
                         if self.failed_page_links == self.failure_limit : 
-                            logger.info(f'{self.failure_limit} consequitive failures , stopping to protect IP')
+                            logger.error(f"{self.failure_limit} consequitive failures , stopping to protect IP")
                             break
                     self.current_page_num += 1
 
-                    # the url for the page we're on  
+                    # the url for the page we"re on  
                     self.current_url = AgencyLinksExtractor.build_next_page_url(self.main_url,self.current_page_num)
     def handle_getting_soup(self) : 
-        '''This function trys to get the page soup for three times , returns soup or None'''
+        """This function trys to get the page soup for three times , returns soup or None"""
         for i in range(1,4):
             soup = get_soup(self.current_url)
             if soup:
@@ -184,9 +208,11 @@ class MainScraper:
 def main() : 
     scraper = MainScraper()
     asyncio.run(scraper.run())
+    # Exporting the data and finalizing scraper 
+    processor = DataProcessor("agencies_csv.csv")
+    
+    processor.run_pipeline()
 
-    scraper_reporter = DataProcessor('agencies_csv.csv')
-    scraper_reporter.finalize_scraper()
-if __name__ == '__main__' : 
+if __name__ == "__main__" : 
     main()
 
