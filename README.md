@@ -40,6 +40,42 @@ The pipeline is designed to extract 100% of publicly listed metadata from the so
 - **Resilience:** Built-in crash recovery; the pipeline resumes exactly where it left off.
 - **CRM Integration:** Outputs are pre-formatted for immediate upload to HubSpot, Salesforce, or Pipedrive.
 
+## 🚀 Getting Started :
+Follow these steps to set up the project locally 
+
+### 1. Clone The Repository 
+
+```
+git clone [https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor](https://github.com/ammar-mostafa-dev/UK-real-estate-leads-extractor)
+cd UK-real-estate-leads-extractor
+```
+
+### 2. Set Up Virtual Environment
+
+```
+python -m venv venv
+# Activate on Windows:
+.\venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+
+```
+pip install -r requirements.txt
+```
+
+### 4. Run Scraper
+
+```
+python main.py
+```
+
+### 📊 What the scraper generates:
+Master Leads Export: A professional Excel file (UK_RealEstate_Master_Leads.xlsx).
+
+Categorized Sheets: Data is automatically sorted into Gold, Platinum, and Regular tiers.
+
+Integrity Report: A final console summary showing data existence percentages.
 ---
 **Developed by Ammar Mostafa**
 *Data Extraction Specialist | Building Scalable B2B Lead Gen Pipelines*
