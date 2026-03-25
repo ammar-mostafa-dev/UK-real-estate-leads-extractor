@@ -24,7 +24,7 @@ class MainScraper:
         self.excel_file = "UK_RealEstate_leads_data_sample.xlsx"
         self.log_file = "scraper.log"
         # attributes for tracking
-        self.page_limit = 500 # this attribute is responsible for detecting page number we stop the scraper at 
+        self.page_limit = 20 # this attribute is responsible for detecting page number we stop the scraper at 
         self.failed_page_links = 0 # to track number of pages failed pages failed
         self.current_page_num = 1
         self.failure_limit = 7 # this attribute is responsible for the number of failed attempts you allow the scraper to continue until it reaches it 
@@ -43,10 +43,9 @@ class MainScraper:
                     soup = BeautifulSoup(html, "lxml")
                     return soup
                 else:
-                    print(f"Failed to fetch {url}, Status: {response.status}")
+                    logger.debug(f"Failed to fetch {url}, Status: {response.status}")
                     return None
-        except Exception as e:
-            print(f"Error fetching {url}: {e}")
+        except Exception:
             return None
     async def scrape_agency_async(self,session,url) : 
         """"Scrape A single agency url asynchronously"""
@@ -64,7 +63,7 @@ class MainScraper:
                 return agency_data
             logger.warning(f"Couldn't Scrape Agency {url} Data")
         except Exception as e:
-            print(f"Error parsing data for {url}: {e}")
+            logger.warning(f"Error parsing data for {url}: {e}")
             return None
 
     def scraper_status_checker(self): 
@@ -163,20 +162,22 @@ class MainScraper:
                             writer.writerow(agency_data)
                             scraped_agencies +=1 
                         else : 
-                          logger.warning(f"Couldn't Extract Agency : {url} data ")
+                          logger.debug(f"Couldn't Extract Agency : {url} data ")
                     # a retry logic for all failed agencies in the page
                     failed_on_this_page = [url for i, url in enumerate(toscrape_urls) if agencies_datas[i] is None]
 
                     if failed_on_this_page:
-                        logger.info(f"Retrying {len(failed_on_this_page)} failed agencies for page {self.current_page_num}...")
                         await asyncio.sleep(4) # delay
                         retry_tasks = [self.sem_task(semaphore, session, url) for url in failed_on_this_page]
                         retry_results = await asyncio.gather(*retry_tasks)
-                        
-                        for data in retry_results:
-                            if data:
-                                writer.writerow(data)
-                                scraped_agencies += 1
+                        if retry_results : 
+                            for data in retry_results:
+                                if data:
+                                    writer.writerow(data)
+                                    scraped_agencies += 1
+                        else : 
+                            logger.warning(f"Couldn't Scrape {len(failed_on_this_page) }Agencies On Page {self.current_page_num}")
+
                     if scraped_agencies != 0 : 
                         logger.info(f"Page {self.current_page_num} Agencies Have Been Scraped,+{scraped_agencies},missing {len(toscrape_urls)-scraped_agencies}")
                         self.failed_page_links = 0 

@@ -3,7 +3,7 @@ venv/
 env/
 .env
 
-# Python Cache (Speeds up execution, but junk for GitHub)
+# Python Cache 
 __pycache__/
 *.py[cod]
 *$py.class
@@ -16,6 +16,6 @@ __pycache__/
 *.log
 .DS_Store
 
-# Data Files (OPTIONAL)
-# If you decide to hide your data later, uncomment the lines below:
+# Data Files 
  *.csv
+*.xlsx

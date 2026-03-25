@@ -43,10 +43,10 @@ class AgencyDataExtractor:
         return dict_data          
 
 def main():
-    url = 'https://www.yelu.uk/company/1191406/euro-resales-limitedwe'
+    url = 'https://www.yelu.uk/company/718140/aaa-property-co'
     agency_extractor = AgencyDataExtractor(get_soup(url))
 
-    value = agency_extractor.all_data_extractor(url=url)
+    value = agency_extractor.agency_data_extractor(url)
 
     print(value)
 
