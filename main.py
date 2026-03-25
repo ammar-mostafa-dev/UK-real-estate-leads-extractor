@@ -24,7 +24,7 @@ class MainScraper:
         self.excel_file = "UK_RealEstate_leads_data_sample.xlsx"
         self.log_file = "scraper.log"
         # attributes for tracking
-        self.page_limit = 20 # this attribute is responsible for detecting page number we stop the scraper at 
+        self.page_limit = 500 # this attribute is responsible for detecting page number we stop the scraper at 
         self.failed_page_links = 0 # to track number of pages failed pages failed
         self.current_page_num = 1
         self.failure_limit = 7 # this attribute is responsible for the number of failed attempts you allow the scraper to continue until it reaches it 
