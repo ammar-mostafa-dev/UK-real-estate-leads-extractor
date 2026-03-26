@@ -7,11 +7,14 @@
 ## 💰 Business Value
 Transforming fragmented web data into actionable business intelligence. This pipeline provides a **curated database of 9,555 UK Real Estate Agencies**, specifically architected for B2B sales teams, marketing agencies, and CRM integration. By implementing a multi-tier segmentation logic, this tool identifies the "Gold" 2% of the market with complete firmographic profiles, saving hours of manual prospecting.
 
-## 🛠️ Tech Stack
-- **Engine:** `Python 3.10` utilizing `AsyncIO` for high-concurrency extraction.
-- **Networking:** `HTTPX` for resilient, non-blocking requests.
-- **Data Architecture:** `Pandas` for advanced data cleaning and multi-sheet Excel serialization.
-- **Resilience:** Custom-built `Retry Logic` and `Checkpoint System` to handle network throttling and anti-bot measures.
+## 🛠️ High-Performance Tech Stack
+
+* **Asynchronous Engine:** Architected with **`Python 3.10`** using **`AsyncIO`** for non-blocking, high-speed concurrent execution.
+* **Network Layer:** Leverages **`aiohttp`** for asynchronous HTTP requests, utilizing a single `ClientSession` for optimized connection pooling and high throughput.
+* **Concurrency Management:** Implemented **`asyncio.Semaphore`** to strictly control request density, preventing IP rate-limiting while maintaining maximum efficiency.
+* **Data Extraction:** High-speed HTML parsing using **`BeautifulSoup4`** with the **`lxml`** engine for optimal processing of complex DOM structures.
+* **Intelligence Pipeline:** Advanced post-processing via **`Pandas`**, featuring automated deduplication, data hygiene, and hierarchical lead tiering.
+* **Resilience & Audit:** Built-in **Fault-Tolerant Checkpoints** (Auto-Resume) and a professional **Logging System** providing real-time operational transparency.
 
 ## 📊 Dataset Overview (9,555 Total Leads)
 The pipeline is designed to extract 100% of publicly listed metadata from the source directory.
