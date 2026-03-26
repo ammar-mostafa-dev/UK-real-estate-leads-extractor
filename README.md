@@ -48,7 +48,7 @@ The pipeline is designed to extract 100% of publicly listed metadata from the so
 
 ### **1. Clone The Repository**
 ```
-git clone [https://github.com/ammar-mostafa-dev/books-catalog-pipeline](https://github.com/ammar-mostafa-dev/Uk-real-estate-leads-extractor)
+git clone https://github.com/ammar-mostafa-dev/Uk-real-estate-leads-extractor
 cd Uk-real-estate-leads-extractor
 ```
 ### **2. Set Up Virtual Environment ** 
